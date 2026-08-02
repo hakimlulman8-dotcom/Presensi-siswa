@@ -155,6 +155,14 @@
             margin-top: 8px;
             font-weight: 600;
         }
+
+        /* Accordion / Toggle */
+        details summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--primary);
+            padding: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -165,9 +173,46 @@
         <p>Aplikasi pencatatan kehadiran terhubung ke Google Sheets</p>
     </header>
 
+    <!-- Kartu Kelola Data Siswa (Master Data) -->
+    <div class="card">
+        <details>
+            <summary>⚙️ Kelola Data Master Siswa (Klik untuk buka/tutup)</summary>
+            <div style="margin-top: 15px;">
+                <form id="studentMasterForm">
+                    <div class="form-group">
+                        <div>
+                            <label for="masterClassLevel">Kelas</label>
+                            <select id="masterClassLevel" required>
+                                <option value="">-- Pilih Kelas --</option>
+                                <option value="Kelas 1">Kelas 1</option>
+                                <option value="Kelas 2">Kelas 2</option>
+                                <option value="Kelas 3">Kelas 3</option>
+                                <option value="Kelas 4">Kelas 4</option>
+                                <option value="Kelas 5">Kelas 5</option>
+                                <option value="Kelas 6">Kelas 6</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="newStudentName">Nama Siswa Baru</label>
+                            <input type="text" id="newStudentName" placeholder="Contoh: Ahmad Yani" required>
+                        </div>
+                    </div>
+                    <button type="submit" style="background-color: #10b981;">+ Tambah ke Daftar Siswa</button>
+                </form>
+
+                <div style="margin-top: 15px;">
+                    <label><strong>Daftar Siswa Tersimpan:</strong></label>
+                    <div id="studentListContainer" style="max-height: 150px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; background: #fafafa; margin-top: 5px;">
+                        <small style="color: #6b7280;">Belum ada siswa ditambahkan.</small>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+
     <!-- Form Input Presensi -->
     <div class="card">
-        <h3>Input Kehadiran</h3>
+        <h3>Input Kehadiran Harian</h3>
         <form id="attendanceForm">
             <div class="form-group">
                 <div>
@@ -175,12 +220,8 @@
                     <input type="date" id="date" required>
                 </div>
                 <div>
-                    <label for="studentName">Nama Siswa</label>
-                    <input type="text" id="studentName" placeholder="Contoh: Budi Santoso" required>
-                </div>
-                <div>
                     <label for="classLevel">Tingkat Kelas</label>
-                    <select id="classLevel" required>
+                    <select id="classLevel" onchange="updateStudentDropdown()" required>
                         <option value="">-- Pilih Kelas --</option>
                         <option value="Kelas 1">Kelas 1</option>
                         <option value="Kelas 2">Kelas 2</option>
@@ -192,7 +233,13 @@
                 </div>
                 <div>
                     <label for="subClass">Rombel / Abjad</label>
-                    <input type="text" id="subClass" placeholder="Contoh: A, B, atau Merah">
+                    <input type="text" id="subClass" placeholder="Contoh: A atau B">
+                </div>
+                <div>
+                    <label for="studentSelect">Nama Siswa</label>
+                    <select id="studentSelect" required>
+                        <option value="">-- Pilih Kelas Dahulu --</option>
+                    </select>
                 </div>
                 <div>
                     <label for="status">Status</label>
@@ -267,14 +314,105 @@
 </div>
 
 <script>
-    // MASUKKAN WEB APP URL GOOGLE APPS SCRIPT ANDA DI SINI (JIKA ADA)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx...SESUAIKAN_URL_ANDA.../exec";
 
     let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
+    let masterStudents = JSON.parse(localStorage.getItem('masterStudents')) || {};
 
     document.getElementById('date').valueAsDate = new Date();
-    document.addEventListener('DOMContentLoaded', renderTable);
 
+    document.addEventListener('DOMContentLoaded', () => {
+        renderTable();
+        renderMasterStudentList();
+    });
+
+    // Handle Tambah Master Siswa
+    document.getElementById('studentMasterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const selectedClass = document.getElementById('masterClassLevel').value;
+        const studentName = document.getElementById('newStudentName').value.trim();
+
+        if (!selectedClass || !studentName) return;
+
+        if (!masterStudents[selectedClass]) {
+            masterStudents[selectedClass] = [];
+        }
+
+        if (!masterStudents[selectedClass].includes(studentName)) {
+            masterStudents[selectedClass].push(studentName);
+            masterStudents[selectedClass].sort(); // urutkan alfabet
+            localStorage.setItem('masterStudents', JSON.stringify(masterStudents));
+            renderMasterStudentList();
+            updateStudentDropdown();
+            document.getElementById('newStudentName').value = '';
+        } else {
+            alert('Nama siswa ini sudah ada di kelas tersebut!');
+        }
+    });
+
+    // Render Tampilan Master Siswa
+    function renderMasterStudentList() {
+        const container = document.getElementById('studentListContainer');
+        container.innerHTML = '';
+
+        let total = 0;
+        for (let cls in masterStudents) {
+            if (masterStudents[cls].length > 0) {
+                let div = document.createElement('div');
+                div.style.marginBottom = "8px";
+                div.innerHTML = `<strong>${cls}:</strong> `;
+                
+                masterStudents[cls].forEach((st, idx) => {
+                    total++;
+                    div.innerHTML += `<span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.85rem; margin-right:5px; display:inline-block; margin-top:3px;">
+                        ${st} <a href="#" onclick="removeStudent('${cls}', '${st}')" style="color:#ef4444; text-decoration:none; font-weight:bold; margin-left:3px;">×</a>
+                    </span>`;
+                });
+                container.appendChild(div);
+            }
+        }
+
+        if (total === 0) {
+            container.innerHTML = '<small style="color: #6b7280;">Belum ada siswa ditambahkan.</small>';
+        }
+    }
+
+    // Hapus Siswa dari Master
+    function removeStudent(cls, name) {
+        if (confirm(`Hapus ${name} dari daftar ${cls}?`)) {
+            masterStudents[cls] = masterStudents[cls].filter(s => s !== name);
+            localStorage.setItem('masterStudents', JSON.stringify(masterStudents));
+            renderMasterStudentList();
+            updateStudentDropdown();
+        }
+    }
+
+    // Update Dropdown Nama Siswa berdasarkan Kelas yang Dipilih
+    function updateStudentDropdown() {
+        const selectedClass = document.getElementById('classLevel').value;
+        const studentSelect = document.getElementById('studentSelect');
+        studentSelect.innerHTML = '';
+
+        if (!selectedClass) {
+            studentSelect.innerHTML = '<option value="">-- Pilih Kelas Dahulu --</option>';
+            return;
+        }
+
+        const students = masterStudents[selectedClass] || [];
+        if (students.length === 0) {
+            studentSelect.innerHTML = '<option value="">-- Belum ada siswa (Isi di Master) --</option>';
+        } else {
+            studentSelect.innerHTML = '<option value="">-- Pilih Nama Siswa --</option>';
+            students.forEach(st => {
+                let opt = document.createElement('option');
+                opt.value = st;
+                opt.textContent = st;
+                studentSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // Handle Form Submit Presensi Harian
     document.getElementById('attendanceForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -284,21 +422,25 @@
         const classLevel = document.getElementById('classLevel').value;
         const subClass = document.getElementById('subClass').value.trim();
         const fullClass = subClass ? `${classLevel} - ${subClass}` : classLevel;
+        const studentName = document.getElementById('studentSelect').value;
+
+        if (!studentName) {
+            alert('Silakan pilih nama siswa!');
+            return;
+        }
 
         const newRecord = {
             id: Date.now(),
             date: document.getElementById('date').value,
-            name: document.getElementById('studentName').value,
+            name: studentName,
             class: fullClass,
             classLevel: classLevel,
             status: document.getElementById('status').value
         };
 
-        // Simpan ke lokal dulu
         attendanceData.push(newRecord);
         saveAndRender();
 
-        // Mengirim ke Google Sheets (jika SCRIPT_URL sudah disesuaikan)
         if (SCRIPT_URL && !SCRIPT_URL.includes("SESUAIKAN_URL_ANDA")) {
             btnSubmit.disabled = true;
             statusMsg.style.color = "#4f46e5";
@@ -323,9 +465,8 @@
             }
         }
 
-        // Reset input nama dan rombel
-        document.getElementById('studentName').value = '';
-        document.getElementById('subClass').value = '';
+        // Reset pilihan siswa
+        document.getElementById('studentSelect').value = '';
     });
 
     function saveAndRender() {
@@ -343,7 +484,6 @@
 
         let counts = { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
 
-        // Filter Data
         const filteredData = attendanceData.filter(item => {
             const matchesSearch = item.name.toLowerCase().includes(searchKeyword);
             const matchesClass = classFilter ? (item.classLevel === classFilter || item.class.includes(classFilter)) : true;
