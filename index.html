@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Presensi Siswa Online</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-export { background-color: #10b981; }
+        .btn-export:hover { background-color: #059669; }
+
+        .btn-clear { background-color: #ef4444; }
+        .btn-clear:hover { background-color: #dc2626; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            text-align: center;
+        }
+
+        .stat-box {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .bg-hadir { background: #d1fae5; color: #065f46; }
+        .bg-sakit { background: #fef3c7; color: #92400e; }
+        .bg-izin  { background: #e0e7ff; color: #3730a3; }
+        .bg-alpa  { background: #fee2e2; color: #991b1b; }
+
+        .filter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-container input, .filter-container select {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background-color: #f9fafb;
+            color: #4b5563;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        #statusMessage {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Presensi Siswa Online</h1>
+        <p>Aplikasi pencatatan kehadiran terhubung ke Google Sheets</p>
+    </header>
+
+    <!-- Form Input Presensi -->
+    <div class="card">
+        <h3>Input Kehadiran</h3>
+        <form id="attendanceForm">
+            <div class="form-group">
+                <div>
+                    <label for="date">Tanggal</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div>
+                    <label for="studentName">Nama Siswa</label>
+                    <input type="text" id="studentName" placeholder="Contoh: Budi Santoso" required>
+                </div>
+                <div>
+                    <label for="classLevel">Tingkat Kelas</label>
+                    <select id="classLevel" required>
+                        <option value="">-- Pilih Kelas --</option>
+                        <option value="Kelas 1">Kelas 1</option>
+                        <option value="Kelas 2">Kelas 2</option>
+                        <option value="Kelas 3">Kelas 3</option>
+                        <option value="Kelas 4">Kelas 4</option>
+                        <option value="Kelas 5">Kelas 5</option>
+                        <option value="Kelas 6">Kelas 6</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="subClass">Rombel / Abjad</label>
+                    <input type="text" id="subClass" placeholder="Contoh: A, B, atau Merah">
+                </div>
+                <div>
+                    <label for="status">Status</label>
+                    <select id="status" required>
+                        <option value="Hadir">Hadir</option>
+                        <option value="Sakit">Sakit</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Alpa">Alpa</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" id="btnSubmit">Simpan Presensi</button>
+            <div id="statusMessage"></div>
+        </form>
+    </div>
+
+    <!-- Ringkasan Statistik -->
+    <div class="card">
+        <h3>Ringkasan Total</h3>
+        <div class="stats">
+            <div class="stat-box bg-hadir">Hadir: <span id="countHadir">0</span></div>
+            <div class="stat-box bg-sakit">Sakit: <span id="countSakit">0</span></div>
+            <div class="stat-box bg-izin">Izin: <span id="countIzin">0</span></div>
+            <div class="stat-box bg-alpa">Alpa: <span id="countAlpa">0</span></div>
+        </div>
+    </div>
+
+    <!-- Tabel Data Presensi -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+            <h3>Daftar Presensi</h3>
+            <div>
+                <button class="btn-export" onclick="exportToCSV()">Export Excel/CSV</button>
+                <button class="btn-clear" onclick="clearAllData()">Hapus Semua Data</button>
+            </div>
+        </div>
+
+        <!-- Filter & Search -->
+        <div class="filter-container">
+            <input type="text" id="searchInput" placeholder="Cari nama siswa..." onkeyup="renderTable()">
+            <select id="filterClassLevel" onchange="renderTable()">
+                <option value="">-- Semua Kelas --</option>
+                <option value="Kelas 1">Kelas 1</option>
+                <option value="Kelas 2">Kelas 2</option>
+                <option value="Kelas 3">Kelas 3</option>
+                <option value="Kelas 4">Kelas 4</option>
+                <option value="Kelas 5">Kelas 5</option>
+                <option value="Kelas 6">Kelas 6</option>
+            </select>
+            <input type="date" id="filterDate" onchange="renderTable()">
+            <button type="button" style="background:#6b7280;" onclick="resetFilter()">Reset Filter</button>
+        </div>
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tanggal</th>
+                        <th>Nama Siswa</th>
+                        <th>Kelas</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTable">
+                    <!-- Data dimasukkan secara dinamis -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // MASUKKAN WEB APP URL GOOGLE APPS SCRIPT ANDA DI SINI (JIKA ADA)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx...SESUAIKAN_URL_ANDA.../exec";
+
+    let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
+
+    document.getElementById('date').valueAsDate = new Date();
+    document.addEventListener('DOMContentLoaded', renderTable);
+
+    document.getElementById('attendanceForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const btnSubmit = document.getElementById('btnSubmit');
+        const statusMsg = document.getElementById('statusMessage');
+
+        const classLevel = document.getElementById('classLevel').value;
+        const subClass = document.getElementById('subClass').value.trim();
+        const fullClass = subClass ? `${classLevel} - ${subClass}` : classLevel;
+
+        const newRecord = {
+            id: Date.now(),
+            date: document.getElementById('date').value,
+            name: document.getElementById('studentName').value,
+            class: fullClass,
+            classLevel: classLevel,
+            status: document.getElementById('status').value
+        };
+
+        // Simpan ke lokal dulu
+        attendanceData.push(newRecord);
+        saveAndRender();
+
+        // Mengirim ke Google Sheets (jika SCRIPT_URL sudah disesuaikan)
+        if (SCRIPT_URL && !SCRIPT_URL.includes("SESUAIKAN_URL_ANDA")) {
+            btnSubmit.disabled = true;
+            statusMsg.style.color = "#4f46e5";
+            statusMsg.innerText = "Mengirim data ke Google Sheets...";
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newRecord)
+                });
+
+                statusMsg.style.color = "#10b981";
+                statusMsg.innerText = "✓ Berhasil disimpan ke browser dan Google Sheets!";
+            } catch (err) {
+                statusMsg.style.color = "#ef4444";
+                statusMsg.innerText = "⚠️ Tersimpan di browser, tapi gagal kirim ke Cloud.";
+            } finally {
+                btnSubmit.disabled = false;
+                setTimeout(() => statusMsg.innerText = "", 4000);
+            }
+        }
+
+        // Reset input nama dan rombel
+        document.getElementById('studentName').value = '';
+        document.getElementById('subClass').value = '';
+    });
+
+    function saveAndRender() {
+        localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
+        renderTable();
+    }
+
+    function renderTable() {
+        const tableBody = document.getElementById('attendanceTable');
+        tableBody.innerHTML = '';
+
+        const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
+        const classFilter = document.getElementById('filterClassLevel').value;
+        const dateFilter = document.getElementById('filterDate').value;
+
+        let counts = { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
+
+        // Filter Data
+        const filteredData = attendanceData.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchKeyword);
+            const matchesClass = classFilter ? (item.classLevel === classFilter || item.class.includes(classFilter)) : true;
+            const matchesDate = dateFilter ? item.date === dateFilter : true;
+            return matchesSearch && matchesClass && matchesDate;
+        });
+
+        filteredData.forEach((item, index) => {
+            counts[item.status]++;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${item.date}</td>
+                <td>${item.name}</td>
+                <td>${item.class}</td>
+                <td><span class="badge bg-${item.status.toLowerCase()}">${item.status}</span></td>
+                <td><button onclick="deleteRecord(${item.id})" style="background:#ef4444; padding: 4px 8px; font-size: 0.8rem;">Hapus</button></td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        document.getElementById('countHadir').innerText = counts.Hadir;
+        document.getElementById('countSakit').innerText = counts.Sakit;
+        document.getElementById('countIzin').innerText = counts.Izin;
+        document.getElementById('countAlpa').innerText = counts.Alpa;
+    }
+
+    function resetFilter() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterClassLevel').value = '';
+        document.getElementById('filterDate').value = '';
+        renderTable();
+    }
+
+    function deleteRecord(id) {
+        if (confirm('Yakin ingin menghapus data ini dari lokal?')) {
+            attendanceData = attendanceData.filter(item => item.id !== id);
+            saveAndRender();
+        }
+    }
+
+    function clearAllData() {
+        if (confirm('Apakah Anda yakin ingin menghapus SELURUH data presensi di browser?')) {
+            attendanceData = [];
+            saveAndRender();
+        }
+    }
+
+    function exportToCSV() {
+        if (attendanceData.length === 0) {
+            alert('Belum ada data untuk diexport!');
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,No,Tanggal,Nama Siswa,Kelas,Status\n";
+        attendanceData.forEach((item, index) => {
+            csvContent += `${index + 1},${item.date},"${item.name}","${item.class}",${item.status}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `presensi_siswa_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
