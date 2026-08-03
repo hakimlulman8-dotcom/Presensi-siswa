@@ -156,7 +156,6 @@
             font-weight: 600;
         }
 
-        /* Accordion / Toggle */
         details summary {
             cursor: pointer;
             font-weight: bold;
@@ -173,7 +172,7 @@
         <p>Aplikasi pencatatan kehadiran terhubung ke Google Sheets</p>
     </header>
 
-    <!-- Kartu Kelola Data Siswa (Master Data) -->
+    <!-- Kelola Data Master Siswa -->
     <div class="card">
         <details>
             <summary>⚙️ Kelola Data Master Siswa (Klik untuk buka/tutup)</summary>
@@ -198,12 +197,13 @@
                         </div>
                     </div>
                     <button type="submit" style="background-color: #10b981;">+ Tambah ke Daftar Siswa</button>
+                    <button type="button" onclick="fetchMasterDataFromCloud()" style="background-color: #3b82f6; margin-left: 5px;">🔄 Sinkron Data Cloud</button>
                 </form>
 
                 <div style="margin-top: 15px;">
-                    <label><strong>Daftar Siswa Tersimpan:</strong></label>
+                    <label><strong>Daftar Siswa Tersimpan (Tersambung Cloud):</strong></label>
                     <div id="studentListContainer" style="max-height: 150px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; background: #fafafa; margin-top: 5px;">
-                        <small style="color: #6b7280;">Belum ada siswa ditambahkan.</small>
+                        <small style="color: #6b7280;">Memuat data siswa...</small>
                     </div>
                 </div>
             </div>
@@ -314,6 +314,7 @@
 </div>
 
 <script>
+    // PASTA-KAN WEB APP URL DARI GOOGLE APPS SCRIPT ANDA DI BAWAH INI
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVLOPffd3Mq7kN0BqKheyA5CroiieyIUTZhynwGZKYyhqvO6VesdSouwvaOBglD5OxrA/exec";
 
     let attendanceData = JSON.parse(localStorage.getItem('attendanceData')) || [];
@@ -324,10 +325,29 @@
     document.addEventListener('DOMContentLoaded', () => {
         renderTable();
         renderMasterStudentList();
+        fetchMasterDataFromCloud();
     });
 
-    // Handle Tambah Master Siswa
-    document.getElementById('studentMasterForm').addEventListener('submit', function(e) {
+    // Ambil data master siswa dari Google Sheets (Cloud)
+    async function fetchMasterDataFromCloud() {
+        if (!SCRIPT_URL || SCRIPT_URL.includes("SESUAIKAN_URL_ANDA")) return;
+
+        try {
+            const res = await fetch(SCRIPT_URL);
+            const data = await res.json();
+            if (data && data.masterStudents) {
+                masterStudents = data.masterStudents;
+                localStorage.setItem('masterStudents', JSON.stringify(masterStudents));
+                renderMasterStudentList();
+                updateStudentDropdown();
+            }
+        } catch (err) {
+            console.log("Gagal memuat data master dari cloud:", err);
+        }
+    }
+
+    // Handle Tambah Master Siswa ke Cloud & Local
+    document.getElementById('studentMasterForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const selectedClass = document.getElementById('masterClassLevel').value;
         const studentName = document.getElementById('newStudentName').value.trim();
@@ -340,17 +360,34 @@
 
         if (!masterStudents[selectedClass].includes(studentName)) {
             masterStudents[selectedClass].push(studentName);
-            masterStudents[selectedClass].sort(); // urutkan alfabet
+            masterStudents[selectedClass].sort();
             localStorage.setItem('masterStudents', JSON.stringify(masterStudents));
             renderMasterStudentList();
             updateStudentDropdown();
             document.getElementById('newStudentName').value = '';
+
+            // Kirim ke Google Sheets
+            if (SCRIPT_URL && !SCRIPT_URL.includes("SESUAIKAN_URL_ANDA")) {
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "addMasterStudent",
+                            classLevel: selectedClass,
+                            studentName: studentName
+                        })
+                    });
+                } catch (err) {
+                    console.log("Gagal sync ke cloud");
+                }
+            }
         } else {
             alert('Nama siswa ini sudah ada di kelas tersebut!');
         }
     });
 
-    // Render Tampilan Master Siswa
     function renderMasterStudentList() {
         const container = document.getElementById('studentListContainer');
         container.innerHTML = '';
@@ -362,10 +399,10 @@
                 div.style.marginBottom = "8px";
                 div.innerHTML = `<strong>${cls}:</strong> `;
                 
-                masterStudents[cls].forEach((st, idx) => {
+                masterStudents[cls].forEach((st) => {
                     total++;
                     div.innerHTML += `<span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.85rem; margin-right:5px; display:inline-block; margin-top:3px;">
-                        ${st} <a href="#" onclick="removeStudent('${cls}', '${st}')" style="color:#ef4444; text-decoration:none; font-weight:bold; margin-left:3px;">×</a>
+                        ${st}
                     </span>`;
                 });
                 container.appendChild(div);
@@ -373,21 +410,10 @@
         }
 
         if (total === 0) {
-            container.innerHTML = '<small style="color: #6b7280;">Belum ada siswa ditambahkan.</small>';
+            container.innerHTML = '<small style="color: #6b7280;">Belum ada data siswa tersimpan.</small>';
         }
     }
 
-    // Hapus Siswa dari Master
-    function removeStudent(cls, name) {
-        if (confirm(`Hapus ${name} dari daftar ${cls}?`)) {
-            masterStudents[cls] = masterStudents[cls].filter(s => s !== name);
-            localStorage.setItem('masterStudents', JSON.stringify(masterStudents));
-            renderMasterStudentList();
-            updateStudentDropdown();
-        }
-    }
-
-    // Update Dropdown Nama Siswa berdasarkan Kelas yang Dipilih
     function updateStudentDropdown() {
         const selectedClass = document.getElementById('classLevel').value;
         const studentSelect = document.getElementById('studentSelect');
@@ -455,7 +481,7 @@
                 });
 
                 statusMsg.style.color = "#10b981";
-                statusMsg.innerText = "✓ Berhasil disimpan ke browser dan Google Sheets!";
+                statusMsg.innerText = "✓ Berhasil disimpan!";
             } catch (err) {
                 statusMsg.style.color = "#ef4444";
                 statusMsg.innerText = "⚠️ Tersimpan di browser, tapi gagal kirim ke Cloud.";
@@ -465,7 +491,6 @@
             }
         }
 
-        // Reset pilihan siswa
         document.getElementById('studentSelect').value = '';
     });
 
